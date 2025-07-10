@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2020-PRESENT Anthony Fu
+Copyright (c) 2025 365睡前故事项目团队
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,44 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+## 中文说明
+
+MIT 许可证
+
+版权所有 (c) 2025 365睡前故事项目团队
+
+特此免费授予任何获得本软件副本和相关文档文件（"软件"）的人不受限制地处理
+软件的权利，包括但不限于使用、复制、修改、合并、发布、分发、再许可和/或出售
+软件副本的权利，以及允许向其提供软件的人员这样做，但须符合以下条件：
+
+上述版权声明和本许可声明应包含在软件的所有副本或重要部分中。
+
+软件按"原样"提供，不提供任何形式的明示或暗示保证，包括但不限于对适销性、
+特定用途适用性和非侵权性的保证。在任何情况下，作者或版权持有人均不对任何
+索赔、损害或其他责任负责，无论是在合同诉讼、侵权行为还是其他方面，由软件
+或软件的使用或其他交易引起、由此产生或与之相关。
+
+## 第三方许可
+
+本项目使用了以下开源项目，感谢这些项目的贡献者：
+
+- Vue.js (MIT License) - https://github.com/vuejs/core
+- Vite (MIT License) - https://github.com/vitejs/vite
+- Vant (MIT License) - https://github.com/vant-ui/vant
+- UnoCSS (MIT License) - https://github.com/unocss/unocss
+- TypeScript (Apache-2.0 License) - https://github.com/microsoft/TypeScript
+- Axios (MIT License) - https://github.com/axios/axios
+
+## 免责声明
+
+本软件仅供学习和研究使用。使用本软件播放的音频内容版权归原作者所有，
+请确保您有合法权利播放相关内容。本项目不承担因使用本软件而产生的任何
+版权纠纷或法律责任。
+
+## 贡献
+
+欢迎提交 Issue 和 Pull Request 来改进本项目。通过向本项目贡献代码，
+您同意将您的贡献按照 MIT 许可证进行许可。
