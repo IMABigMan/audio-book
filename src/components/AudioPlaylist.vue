@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PlaylistType } from '@/api'
 import { showToast } from 'vant'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
@@ -11,7 +12,21 @@ interface AudioItem {
 
 const props = defineProps<{
   playlist: AudioItem[]
+  currentPlaylistType?: PlaylistType
 }>()
+
+const emit = defineEmits<{
+  playlistChange: [type: PlaylistType]
+}>()
+
+// 播放列表选项
+const playlistOptions = [
+  { text: '全部故事', value: 'all' as PlaylistType },
+  { text: '本地故事', value: 'local' as PlaylistType },
+]
+
+// 当前播放列表类型
+const selectedPlaylistType = ref<PlaylistType>(props.currentPlaylistType || 'all')
 
 // 响应式数据
 const searchKeywordShow = ref('')
@@ -24,6 +39,11 @@ const isLoop = ref(false)
 const volume = ref(100)
 const isLoading = ref(false)
 const audioRef = ref<HTMLAudioElement>()
+
+// 单曲循环次数相关
+const singleLoopCount = ref(1) // 单曲循环次数，1表示播放一次，0表示无限循环
+const currentSingleLoopCount = ref(0) // 当前单曲已循环次数
+const showLoopSelector = ref(false) // 是否显示循环次数选择器
 
 // 计算属性
 const filteredPlaylist = computed(() => {
@@ -41,6 +61,17 @@ const currentAudio = computed(() => {
 })
 
 const progress = ref(0)
+
+// 循环状态显示
+const loopStatusText = computed(() => {
+  if (singleLoopCount.value === 0) {
+    return '单曲无限循环'
+  }
+  if (singleLoopCount.value === 1) {
+    return '播放一次'
+  }
+  return `单曲循环 ${currentSingleLoopCount.value + 1}/${singleLoopCount.value}`
+})
 
 function formatTime(time: number) {
   const minutes = Math.floor(time / 60)
@@ -88,7 +119,7 @@ function playNext() {
     currentIndex.value++
   }
   else {
-    currentIndex.value = 0 // 循环播放
+    currentIndex.value = 0 // 回到第一首
   }
   initPlay()
   play()
@@ -112,11 +143,36 @@ function setLoop() {
   }
 }
 
+// 循环次数选择相关方法
+function toggleLoopSelector() {
+  showLoopSelector.value = !showLoopSelector.value
+}
+
+function setLoopCount(count: number) {
+  singleLoopCount.value = count
+  currentSingleLoopCount.value = 0 // 重置当前循环次数
+  showLoopSelector.value = false
+  // 如果设置了循环次数，关闭原来的单曲循环
+  if (count > 1 || count === 0) {
+    isLoop.value = false
+    if (audioRef.value) {
+      audioRef.value.loop = false
+    }
+  }
+  showToast(count === 0 ? '设置为无限循环' : `设置循环 ${count} 次`)
+}
+
+function resetSingleLoopCount() {
+  currentSingleLoopCount.value = 0
+}
+
 function initPlay() {
   if (audioRef.value) {
     audioRef.value.currentTime = 0
     audioRef.value.pause()
-    audioRef.value.src = `https://kuer.77188.com/attachment/${currentAudio.value.src}`
+    audioRef.value.src = selectedPlaylistType.value === 'local'
+      ? currentAudio.value.src
+      : `https://kuer.77188.com/attachment/${currentAudio.value.src}`
   }
 }
 
@@ -124,6 +180,7 @@ function playAudio(index: number) {
   currentIndex.value = index
   duration.value = 0
   currentTime.value = 0
+  resetSingleLoopCount() // 重置循环计数
   initPlay()
   play()
 }
@@ -158,14 +215,29 @@ function onTimeUpdate() {
 
 function onEnded() {
   isPlaying.value = false
-  if (isLoop.value)
+
+  // 如果开启了原生单曲循环，直接返回让audio元素自己循环
+  if (isLoop.value) {
     return
-  // 自动播放下一首
-  playNext()
-  // 延迟一点时间再播放，确保音频已切换
-  setTimeout(() => {
+  }
+
+  // 检查单曲循环次数
+  if (singleLoopCount.value === 0) {
+    // 无限循环当前歌曲
+    currentSingleLoopCount.value++
     play()
-  }, 100)
+    return
+  }
+  else if (currentSingleLoopCount.value < singleLoopCount.value - 1) {
+    // 还有循环次数，继续播放当前歌曲
+    currentSingleLoopCount.value++
+    play()
+    return
+  }
+
+  // 单曲循环完成，播放下一首
+  resetSingleLoopCount()
+  playNext()
 }
 
 function onError() {
@@ -181,8 +253,21 @@ function onCanPlay() {
 function onSearch() {
   currentIndex.value = 0
   searchKeyword.value = searchKeywordShow.value
+  resetSingleLoopCount() // 重置循环计数
   initPlay()
   play()
+}
+
+// 播放列表切换
+function onPlaylistChange(type: PlaylistType) {
+  selectedPlaylistType.value = type
+  emit('playlistChange', type)
+  // 重置播放状态
+  currentIndex.value = 0
+  searchKeyword.value = ''
+  searchKeywordShow.value = ''
+  resetSingleLoopCount()
+  pause()
 }
 
 // 监听当前音频变化
@@ -190,6 +275,13 @@ watch(currentAudio, (newAudio) => {
   if (newAudio && audioRef.value) {
     currentTime.value = 0
     duration.value = 0
+  }
+}, { immediate: true })
+
+// 监听播放列表类型变化
+watch(() => props.currentPlaylistType, (newType) => {
+  if (newType && newType !== selectedPlaylistType.value) {
+    selectedPlaylistType.value = newType
   }
 }, { immediate: true })
 
@@ -216,6 +308,18 @@ onUnmounted(() => {
         placeholder="搜索故事名或序号"
         @search="onSearch"
       />
+    </div>
+
+    <!-- 播放列表选择器 -->
+    <div class="playlist-selector">
+      <van-tabs v-model:active="selectedPlaylistType" @change="onPlaylistChange">
+        <van-tab
+          v-for="option in playlistOptions"
+          :key="option.value"
+          :name="option.value"
+          :title="option.text"
+        />
+      </van-tabs>
     </div>
 
     <!-- 当前播放信息 -->
@@ -278,6 +382,16 @@ onUnmounted(() => {
           round
           @click="setLoop"
         />
+
+        <!-- 循环次数选择 -->
+        <van-button
+          icon="orders-o"
+          :type="singleLoopCount !== 1 ? 'primary' : 'default'"
+          round
+          @click="toggleLoopSelector"
+        >
+          {{ singleLoopCount === 0 ? '∞' : singleLoopCount }}
+        </van-button>
       </div>
 
       <!-- 音量控制 -->
@@ -289,6 +403,46 @@ onUnmounted(() => {
           @change="changeVolume"
         />
       </div>
+
+      <!-- 循环次数选择器 -->
+      <van-popup
+        v-model:show="showLoopSelector"
+        position="bottom"
+        :style="{ height: '40%' }"
+      >
+        <div class="loop-selector">
+          <div class="loop-selector-header">
+            <h3>选择循环次数</h3>
+            <van-button
+              type="primary"
+              size="small"
+              @click="showLoopSelector = false"
+            >
+              完成
+            </van-button>
+          </div>
+          <div class="loop-options">
+            <van-button
+              v-for="count in [1, 2, 3, 5, 10, 0]"
+              :key="count"
+              :type="singleLoopCount === count ? 'primary' : 'default'"
+              class="loop-option"
+              @click="setLoopCount(count)"
+            >
+              {{ count === 0 ? '无限循环' : `${count} 次` }}
+            </van-button>
+          </div>
+          <div class="loop-status">
+            <p>当前设置: {{ singleLoopCount === 0 ? '无限循环' : `循环 ${singleLoopCount} 次` }}</p>
+            <p v-if="singleLoopCount > 0">
+              已完成: {{ currentSingleLoopCount + 1 }} / {{ singleLoopCount }}
+            </p>
+            <p class="current-status">
+              状态: {{ loopStatusText }}
+            </p>
+          </div>
+        </div>
+      </van-popup>
     </div>
 
     <!-- 播放列表 -->
@@ -351,6 +505,13 @@ onUnmounted(() => {
 
 .search-section {
   margin-bottom: 16px;
+}
+
+.playlist-selector {
+  margin-bottom: 16px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .current-player {
@@ -486,5 +647,53 @@ onUnmounted(() => {
 .song-artist {
   font-size: 14px;
   color: #666;
+}
+
+/* 循环次数选择器样式 */
+.loop-selector {
+  padding: 20px;
+  background: white;
+}
+
+.loop-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.loop-selector-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.loop-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.loop-option {
+  height: 44px;
+  border-radius: 8px;
+}
+
+.loop-status {
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.loop-status p {
+  margin: 8px 0;
+}
+
+.current-status {
+  font-weight: 600;
+  color: #1989fa !important;
 }
 </style>

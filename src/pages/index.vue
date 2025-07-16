@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends any, O extends any">
-import { getMusicList } from '@/api'
+import { getPlaylistByType, type PlaylistType } from '@/api'
 import AudioPlaylist from '@/components/AudioPlaylist.vue'
 
 interface AudioItem {
@@ -14,10 +14,13 @@ defineOptions({
 })
 
 const musicList = ref<AudioItem[]>([])
+const currentPlaylistType = ref<PlaylistType>('all')
+const isLoading = ref(false)
 
-async function fetchMusicList() {
+async function fetchMusicList(type: PlaylistType = 'all') {
   try {
-    const res = await getMusicList()
+    isLoading.value = true
+    const res = await getPlaylistByType(type)
     const list = res.data.map((item: AudioItem, index: number) => {
       return {
         sort: index + 1,
@@ -27,17 +30,57 @@ async function fetchMusicList() {
       }
     })
     musicList.value = list
+    currentPlaylistType.value = type
   }
   catch (error) {
-    console.error('Failed to fetch user list:', error)
+    console.error('Failed to fetch music list:', error)
+  }
+  finally {
+    isLoading.value = false
   }
 }
 
+// 处理播放列表切换
+function handlePlaylistChange(type: PlaylistType) {
+  fetchMusicList(type)
+}
+
 onMounted(() => {
-  fetchMusicList()
+  fetchMusicList('all')
 })
 </script>
 
 <template>
-  <AudioPlaylist v-if="musicList.length" :playlist="musicList" />
+  <div v-if="isLoading" class="loading-container">
+    <van-loading type="spinner" size="24px">
+      加载中...
+    </van-loading>
+  </div>
+  <AudioPlaylist
+    v-else-if="musicList.length"
+    :playlist="musicList"
+    :current-playlist-type="currentPlaylistType"
+    @playlist-change="handlePlaylistChange"
+  />
+  <div v-else class="empty-container">
+    <van-empty description="暂无音频数据" />
+  </div>
 </template>
+
+<style scoped>
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #f8f9fa;
+}
+
+.empty-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #f8f9fa;
+}
+</style>
