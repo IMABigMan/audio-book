@@ -23,6 +23,7 @@ const emit = defineEmits<{
 const playlistOptions = [
   { text: '全部故事', value: 'all' as PlaylistType },
   { text: '本地故事', value: 'local' as PlaylistType },
+  { text: '人声故事', value: 'voice' as PlaylistType },
 ]
 
 // 当前播放列表类型
@@ -170,9 +171,17 @@ function initPlay() {
   if (audioRef.value) {
     audioRef.value.currentTime = 0
     audioRef.value.pause()
-    audioRef.value.src = selectedPlaylistType.value === 'local'
-      ? currentAudio.value.src
-      : `https://kuer.77188.com/attachment/${currentAudio.value.src}`
+    let prePath = ''
+    if (selectedPlaylistType.value === 'all') {
+      prePath = 'https://kuer.77188.com/attachment/'
+    }
+    else if (selectedPlaylistType.value === 'local') {
+      prePath = ''
+    }
+    else if (selectedPlaylistType.value === 'voice') {
+      prePath = 'http://hingsen.com/yinpinFirst23/videos/'
+    }
+    audioRef.value.src = `${prePath}${currentAudio.value.src}`
   }
 }
 
