@@ -4,6 +4,7 @@
   "packageManager": "pnpm@10.12.1",
   "scripts": {
     "build": "vite build",
+    "build:githubPages": "vite build --mode githubPages",
     "dev": "vite --port 3535 --open",
     "lint": "eslint .",
     "typecheck": "vue-tsc",
